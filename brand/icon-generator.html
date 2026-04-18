@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AlgoQuest Brand Asset Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+    background: #0F1923;
+    color: #F0F0F0;
+    padding: 40px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #58CC02, #1CB0F6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  p.subtitle { color: #7A8A9A; margin-bottom: 40px; font-size: 14px; }
+  .section {
+    margin-bottom: 48px;
+    padding: 24px;
+    background: #1A2733;
+    border-radius: 16px;
+    border: 1px solid #2A3A4A;
+  }
+  .section h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  .section .meta { font-size: 12px; color: #7A8A9A; margin-bottom: 16px; font-family: "SF Mono", Menlo, monospace; }
+  .preview-sizes { display: flex; gap: 24px; align-items: flex-end; margin-bottom: 16px; }
+  .preview-sizes > div { text-align: center; }
+  .preview-sizes span { display: block; font-size: 10px; color: #7A8A9A; margin-top: 8px; }
+  .preview { background: linear-gradient(135deg, #2A3A4A, #1A2733); padding: 24px; border-radius: 12px; display: inline-block; margin-bottom: 16px; }
+  canvas { display: block; border-radius: 24%; }
+  canvas.flat { border-radius: 0; }
+  button {
+    background: linear-gradient(135deg, #58CC02, #4CAF50);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+  button:hover { opacity: 0.9; }
+  button.secondary { background: transparent; border: 1px solid #2A3A4A; color: #F0F0F0; }
+  .variants { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .variant { text-align: center; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
+  .variant.active { opacity: 1; }
+  .variant canvas { width: 96px; height: 96px; }
+  .variant span { font-size: 11px; color: #7A8A9A; display: block; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>AlgoQuest Brand Assets</h1>
+<p class="subtitle">Programmatically generated · pixel-perfect · Play Store compliant</p>
+
+<div class="section">
+  <h2>App Icon</h2>
+  <div class="meta">512 × 512 PNG · for Google Play Console "App icon" slot</div>
+  <div class="preview-sizes">
+    <div>
+      <canvas id="icon512" width="512" height="512" style="width:256px;height:256px;"></canvas>
+      <span>512px (preview at 256)</span>
+    </div>
+    <div>
+      <canvas id="icon192" width="192" height="192" style="width:96px;height:96px;"></canvas>
+      <span>At 96px</span>
+    </div>
+    <div>
+      <canvas id="icon48" width="48" height="48" style="width:48px;height:48px; image-rendering: pixelated;"></canvas>
+      <span>At 48px (launcher)</span>
+    </div>
+  </div>
+  <button onclick="download('icon512', 'algoquest-icon-512.png')">Download 512×512 PNG</button>
+  <button class="secondary" onclick="download('icon512', 'algoquest-icon-flat-512.png')">Download (flat)</button>
+
+  <div class="variants">
+    <div class="variant active" data-variant="brain-circuit" onclick="selectVariant(this)">
+      <canvas width="192" height="192" class="variant-preview"></canvas>
+      <span>Brain Circuit</span>
+    </div>
+    <div class="variant" data-variant="tree-node" onclick="selectVariant(this)">
+      <canvas width="192" height="192" class="variant-preview"></canvas>
+      <span>Binary Tree</span>
+    </div>
+    <div class="variant" data-variant="bracket-brain" onclick="selectVariant(this)">
+      <canvas width="192" height="192" class="variant-preview"></canvas>
+      <span>Code Brain</span>
+    </div>
+    <div class="variant" data-variant="quest-shield" onclick="selectVariant(this)">
+      <canvas width="192" height="192" class="variant-preview"></canvas>
+      <span>Quest Shield</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Feature Graphic</h2>
+  <div class="meta">1024 × 500 PNG · for Google Play Console "Feature graphic" slot</div>
+  <div class="preview">
+    <canvas id="feature" width="1024" height="500" class="flat" style="width:512px;height:250px;border-radius:8px;"></canvas>
+  </div>
+  <div>
+    <button onclick="download('feature', 'algoquest-feature-1024x500.png')">Download 1024×500 PNG</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Screenshot Frame</h2>
+  <div class="meta">1080 × 1920 PNG · base canvas for phone screenshots</div>
+  <div class="preview">
+    <canvas id="screenshot" width="1080" height="1920" class="flat" style="width:216px;height:384px;border-radius:16px;"></canvas>
+  </div>
+  <div>
+    <button onclick="download('screenshot', 'algoquest-screenshot-1080x1920.png')">Download 1080×1920 PNG</button>
+  </div>
+</div>
+
+<script>
+const C = {
+  bg: '#1A1A2E',
+  bgDeep: '#0F0F1F',
+  green: '#58CC02',
+  greenDark: '#4CAF50',
+  blue: '#1CB0F6',
+  orange: '#FF9600',
+  red: '#FF4B4B',
+  purple: '#A560E8',
+  yellow: '#FFC800',
+  gold: '#FFD700',
+  white: '#FFFFFF',
+  gray: '#8899AA'
+};
+
+let currentVariant = 'brain-circuit';
+
+function drawBg(ctx, w, h) {
+  ctx.fillStyle = C.bgDeep;
+  ctx.fillRect(0, 0, w, h);
+  const g = ctx.createRadialGradient(w*0.4, h*0.35, 0, w*0.4, h*0.35, w*0.8);
+  g.addColorStop(0, 'rgba(88,204,2,0.15)');
+  g.addColorStop(0.5, 'rgba(28,176,246,0.06)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawSparkle(ctx, x, y, size, color) {
+  ctx.save();
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, size*2);
+  halo.addColorStop(0, color + 'aa');
+  halo.addColorStop(0.5, color + '33');
+  halo.addColorStop(1, color + '00');
+  ctx.fillStyle = halo;
+  ctx.fillRect(x-size*2.5, y-size*2.5, size*5, size*5);
+  ctx.beginPath();
+  ctx.moveTo(x, y-size);
+  ctx.lineTo(x+size*0.22, y-size*0.22);
+  ctx.lineTo(x+size, y);
+  ctx.lineTo(x+size*0.22, y+size*0.22);
+  ctx.lineTo(x, y+size);
+  ctx.lineTo(x-size*0.22, y+size*0.22);
+  ctx.lineTo(x-size, y);
+  ctx.lineTo(x-size*0.22, y-size*0.22);
+  ctx.closePath();
+  ctx.fillStyle = C.white;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = size*0.8;
+  ctx.fill();
+  ctx.restore();
+}
+
+// VARIANT 1: Brain with circuit nodes
+function drawBrainCircuit(ctx, s) {
+  drawBg(ctx, s, s);
+  const cx = s/2, cy = s*0.45;
+  const r = s*0.22;
+
+  // Brain glow
+  ctx.save();
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.08;
+
+  // Brain shape (two hemispheres)
+  const grad = ctx.createLinearGradient(cx-r, cy-r, cx+r, cy+r);
+  grad.addColorStop(0, C.green);
+  grad.addColorStop(0.6, '#45B800');
+  grad.addColorStop(1, C.blue);
+
+  // Left hemisphere
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx - r*0.25, cy - r*0.1, r*0.75, Math.PI*0.5, Math.PI*1.5);
+  ctx.arc(cx - r*0.15, cy - r*0.55, r*0.45, Math.PI*1.2, Math.PI*0.1);
+  ctx.fill();
+
+  // Right hemisphere
+  ctx.beginPath();
+  ctx.arc(cx + r*0.25, cy - r*0.1, r*0.75, Math.PI*1.5, Math.PI*0.5);
+  ctx.arc(cx + r*0.15, cy - r*0.55, r*0.45, Math.PI*0.9, Math.PI*1.8, true);
+  ctx.fill();
+
+  // Center line
+  ctx.strokeStyle = C.bgDeep;
+  ctx.lineWidth = s*0.015;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r*0.85);
+  ctx.quadraticCurveTo(cx - s*0.01, cy, cx, cy + r*0.65);
+  ctx.stroke();
+
+  // Brain folds
+  ctx.strokeStyle = 'rgba(15,15,31,0.4)';
+  ctx.lineWidth = s*0.01;
+  [-0.3, 0.3].forEach(off => {
+    ctx.beginPath();
+    ctx.moveTo(cx + off*r*1.5, cy - r*0.4);
+    ctx.quadraticCurveTo(cx + off*r*1.2, cy, cx + off*r*1.6, cy + r*0.3);
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  // Circuit nodes connecting from brain
+  const nodes = [
+    [cx - s*0.28, cy + s*0.22, C.blue],
+    [cx + s*0.28, cy + s*0.22, C.orange],
+    [cx, cy + s*0.32, C.purple],
+    [cx - s*0.18, cy + s*0.35, C.yellow],
+    [cx + s*0.18, cy + s*0.35, C.green],
+  ];
+
+  // Connection lines
+  ctx.save();
+  ctx.strokeStyle = 'rgba(88,204,2,0.3)';
+  ctx.lineWidth = s*0.008;
+  nodes.forEach(([nx, ny]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r*0.5);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  // Node dots
+  nodes.forEach(([nx, ny, color]) => {
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = s*0.03;
+    ctx.beginPath();
+    ctx.arc(nx, ny, s*0.025, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  // Sparkle
+  drawSparkle(ctx, cx + r*0.7, cy - r*0.7, s*0.06, C.yellow);
+
+  // "AQ" text at bottom
+  ctx.fillStyle = C.white;
+  ctx.font = `900 ${s*0.11}px -apple-system, "SF Pro Display", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.04;
+  ctx.fillText('AQ', cx, s*0.82);
+  ctx.shadowBlur = 0;
+}
+
+// VARIANT 2: Binary Tree
+function drawTreeNode(ctx, s) {
+  drawBg(ctx, s, s);
+  const cx = s/2;
+
+  const grad = ctx.createLinearGradient(0, s*0.15, s, s*0.85);
+  grad.addColorStop(0, C.green);
+  grad.addColorStop(1, C.blue);
+
+  // Tree structure
+  const levels = [
+    [[cx, s*0.22]],
+    [[cx-s*0.2, s*0.45], [cx+s*0.2, s*0.45]],
+    [[cx-s*0.32, s*0.68], [cx-s*0.1, s*0.68], [cx+s*0.1, s*0.68], [cx+s*0.32, s*0.68]]
+  ];
+
+  // Edges
+  ctx.strokeStyle = 'rgba(88,204,2,0.4)';
+  ctx.lineWidth = s*0.018;
+  ctx.lineCap = 'round';
+  // Level 0 to 1
+  levels[1].forEach(([ex, ey]) => {
+    ctx.beginPath(); ctx.moveTo(levels[0][0][0], levels[0][0][1]); ctx.lineTo(ex, ey); ctx.stroke();
+  });
+  // Level 1 to 2
+  ctx.beginPath(); ctx.moveTo(levels[1][0][0], levels[1][0][1]); ctx.lineTo(levels[2][0][0], levels[2][0][1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(levels[1][0][0], levels[1][0][1]); ctx.lineTo(levels[2][1][0], levels[2][1][1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(levels[1][1][0], levels[1][1][1]); ctx.lineTo(levels[2][2][0], levels[2][2][1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(levels[1][1][0], levels[1][1][1]); ctx.lineTo(levels[2][3][0], levels[2][3][1]); ctx.stroke();
+
+  // Nodes
+  const colors = [C.green, C.blue, C.orange, C.purple, C.yellow, C.red, C.green];
+  let ci = 0;
+  levels.forEach(level => {
+    level.forEach(([nx, ny]) => {
+      const nc = colors[ci++ % colors.length];
+      ctx.save();
+      ctx.shadowColor = nc;
+      ctx.shadowBlur = s*0.04;
+      ctx.fillStyle = nc;
+      ctx.beginPath();
+      ctx.arc(nx, ny, s*0.055, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = C.white;
+      ctx.font = `800 ${s*0.04}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(ci, nx, ny);
+      ctx.restore();
+    });
+  });
+
+  drawSparkle(ctx, s*0.78, s*0.18, s*0.055, C.yellow);
+
+  ctx.fillStyle = C.white;
+  ctx.font = `900 ${s*0.1}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.04;
+  ctx.fillText('AQ', cx, s*0.87);
+  ctx.shadowBlur = 0;
+}
+
+// VARIANT 3: Code Brain (brackets + brain)
+function drawBracketBrain(ctx, s) {
+  drawBg(ctx, s, s);
+  const cx = s/2, cy = s*0.47;
+
+  // Large curly braces
+  const grad = ctx.createLinearGradient(s*0.15, s*0.15, s*0.85, s*0.85);
+  grad.addColorStop(0, C.green);
+  grad.addColorStop(1, C.blue);
+
+  ctx.save();
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = s*0.04;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.05;
+
+  // Left brace {
+  ctx.beginPath();
+  ctx.moveTo(s*0.3, s*0.2);
+  ctx.quadraticCurveTo(s*0.18, s*0.2, s*0.18, s*0.35);
+  ctx.lineTo(s*0.18, s*0.42);
+  ctx.quadraticCurveTo(s*0.18, s*0.47, s*0.12, s*0.47);
+  ctx.quadraticCurveTo(s*0.18, s*0.47, s*0.18, s*0.52);
+  ctx.lineTo(s*0.18, s*0.59);
+  ctx.quadraticCurveTo(s*0.18, s*0.74, s*0.3, s*0.74);
+  ctx.stroke();
+
+  // Right brace }
+  ctx.beginPath();
+  ctx.moveTo(s*0.7, s*0.2);
+  ctx.quadraticCurveTo(s*0.82, s*0.2, s*0.82, s*0.35);
+  ctx.lineTo(s*0.82, s*0.42);
+  ctx.quadraticCurveTo(s*0.82, s*0.47, s*0.88, s*0.47);
+  ctx.quadraticCurveTo(s*0.82, s*0.47, s*0.82, s*0.52);
+  ctx.lineTo(s*0.82, s*0.59);
+  ctx.quadraticCurveTo(s*0.82, s*0.74, s*0.7, s*0.74);
+  ctx.stroke();
+  ctx.restore();
+
+  // Brain symbol in center (drawn, not emoji)
+  ctx.fillStyle = C.green;
+  ctx.font = `900 ${s*0.18}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.06;
+  ctx.fillText('AI', cx, cy);
+  ctx.shadowBlur = 0;
+
+  drawSparkle(ctx, s*0.75, s*0.22, s*0.06, C.orange);
+
+  ctx.fillStyle = C.white;
+  ctx.font = `900 ${s*0.1}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.04;
+  ctx.fillText('AlgoQuest', cx, s*0.88);
+  ctx.shadowBlur = 0;
+}
+
+// VARIANT 4: Quest Shield
+function drawQuestShield(ctx, s) {
+  drawBg(ctx, s, s);
+  const cx = s/2, cy = s*0.42;
+  const sw = s*0.36, sh = s*0.44;
+
+  const grad = ctx.createLinearGradient(cx-sw, cy-sh/2, cx+sw, cy+sh/2);
+  grad.addColorStop(0, C.green);
+  grad.addColorStop(0.5, '#45B800');
+  grad.addColorStop(1, C.blue);
+
+  ctx.save();
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.06;
+
+  // Shield shape
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - sh*0.55);
+  ctx.quadraticCurveTo(cx + sw*0.9, cy - sh*0.5, cx + sw, cy - sh*0.2);
+  ctx.quadraticCurveTo(cx + sw*0.95, cy + sh*0.15, cx, cy + sh*0.55);
+  ctx.quadraticCurveTo(cx - sw*0.95, cy + sh*0.15, cx - sw, cy - sh*0.2);
+  ctx.quadraticCurveTo(cx - sw*0.9, cy - sh*0.5, cx, cy - sh*0.55);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Inner shield detail
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = s*0.008;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - sh*0.38);
+  ctx.quadraticCurveTo(cx + sw*0.65, cy - sh*0.34, cx + sw*0.72, cy - sh*0.12);
+  ctx.quadraticCurveTo(cx + sw*0.68, cy + sh*0.08, cx, cy + sh*0.38);
+  ctx.quadraticCurveTo(cx - sw*0.68, cy + sh*0.08, cx - sw*0.72, cy - sh*0.12);
+  ctx.quadraticCurveTo(cx - sw*0.65, cy - sh*0.34, cx, cy - sh*0.38);
+  ctx.stroke();
+
+  // Code symbol inside shield
+  ctx.fillStyle = C.white;
+  ctx.font = `800 ${s*0.16}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('</>', cx, cy - sh*0.05);
+
+  // Checkmark
+  ctx.strokeStyle = C.yellow;
+  ctx.lineWidth = s*0.03;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - s*0.06, cy + sh*0.18);
+  ctx.lineTo(cx - s*0.01, cy + sh*0.26);
+  ctx.lineTo(cx + s*0.08, cy + sh*0.12);
+  ctx.stroke();
+
+  drawSparkle(ctx, cx + sw*0.8, cy - sh*0.45, s*0.055, C.gold);
+
+  ctx.fillStyle = C.white;
+  ctx.font = `900 ${s*0.09}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = C.green;
+  ctx.shadowBlur = s*0.04;
+  ctx.fillText('AlgoQuest', cx, s*0.88);
+  ctx.shadowBlur = 0;
+}
+
+function drawIcon(ctx, size, variant) {
+  if (variant === 'brain-circuit') drawBrainCircuit(ctx, size);
+  else if (variant === 'tree-node') drawTreeNode(ctx, size);
+  else if (variant === 'bracket-brain') drawBracketBrain(ctx, size);
+  else if (variant === 'quest-shield') drawQuestShield(ctx, size);
+}
+
+function drawFeatureGraphic() {
+  const c = document.getElementById('feature');
+  const ctx = c.getContext('2d');
+  const W = 1024, H = 500;
+
+  const bg = ctx.createLinearGradient(0, 0, W, 0);
+  bg.addColorStop(0, C.green);
+  bg.addColorStop(0.4, '#2D7A01');
+  bg.addColorStop(1, C.bgDeep);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Decorative dots
+  ctx.globalAlpha = 0.08;
+  for (let i = 0; i < 80; i++) {
+    ctx.fillStyle = [C.blue, C.orange, C.yellow, C.white][i%4];
+    ctx.beginPath();
+    ctx.arc(Math.random()*W, Math.random()*H, 1+Math.random()*3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Icon
+  const logoSize = 280;
+  const logoX = 60, logoY = (H-logoSize)/2;
+  ctx.save();
+  const r = logoSize*0.24;
+  ctx.beginPath();
+  ctx.moveTo(logoX+r, logoY);
+  ctx.arcTo(logoX+logoSize, logoY, logoX+logoSize, logoY+logoSize, r);
+  ctx.arcTo(logoX+logoSize, logoY+logoSize, logoX, logoY+logoSize, r);
+  ctx.arcTo(logoX, logoY+logoSize, logoX, logoY, r);
+  ctx.arcTo(logoX, logoY, logoX+logoSize, logoY, r);
+  ctx.closePath();
+  ctx.clip();
+  const off = document.createElement('canvas');
+  off.width = logoSize; off.height = logoSize;
+  drawIcon(off.getContext('2d'), logoSize, currentVariant);
+  ctx.drawImage(off, logoX, logoY);
+  ctx.restore();
+
+  ctx.fillStyle = C.white;
+  ctx.font = '900 64px -apple-system, "SF Pro Display", sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillText('AlgoQuest', logoX+logoSize+40, 155);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = '500 26px -apple-system, "SF Pro Display", sans-serif';
+  ctx.fillText('Master DSA. Ace Your Interview.', logoX+logoSize+42, 235);
+  ctx.fillText('150 NeetCode problems with gamified learning.', logoX+logoSize+42, 275);
+}
+
+function drawScreenshot() {
+  const c = document.getElementById('screenshot');
+  const ctx = c.getContext('2d');
+  const W = 1080, H = 1920;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, C.green);
+  bg.addColorStop(0.35, '#2D7A01');
+  bg.addColorStop(1, C.bgDeep);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = '500 36px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Replace with in-app screenshot', W/2, H/2-20);
+  ctx.font = '400 24px -apple-system, sans-serif';
+  ctx.fillText('Take a phone screenshot, paste over this.', W/2, H/2+24);
+}
+
+function download(id, filename) {
+  const c = document.getElementById(id);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = c.toDataURL('image/png');
+  link.click();
+}
+
+function selectVariant(el) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  el.classList.add('active');
+  currentVariant = el.dataset.variant;
+  renderAll();
+}
+
+function renderAll() {
+  [['icon512',512],['icon192',192],['icon48',48]].forEach(([id,s]) => {
+    const c = document.getElementById(id);
+    drawIcon(c.getContext('2d'), s, currentVariant);
+  });
+  drawFeatureGraphic();
+  drawScreenshot();
+  document.querySelectorAll('.variant-preview').forEach(cv => {
+    drawIcon(cv.getContext('2d'), 192, cv.parentElement.dataset.variant);
+  });
+}
+
+renderAll();
+</script>
+</body>
+</html>
