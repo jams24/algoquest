@@ -61,9 +61,9 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       user: { id: user.id, email: user.email, username: user.username, level: user.level, xp: user.xp },
       ...tokens
     });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Register error:', error?.message || error);
+    res.status(500).json({ error: 'Internal server error', detail: error?.message });
   }
 });
 
@@ -146,9 +146,9 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       },
       ...tokens
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Login error:', error?.message || error);
+    res.status(500).json({ error: 'Internal server error', detail: error?.message });
   }
 });
 
