@@ -1,5 +1,6 @@
 package com.algoquest.ui.screens
 
+import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,19 +38,14 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val repository: AlgoRepository,
-    val googleAuthHelper: GoogleAuthHelper
+    private val googleAuthHelper: GoogleAuthHelper
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    private val _isGoogleLoading = MutableStateFlow(false)
-    val isGoogleLoading = _isGoogleLoading.asStateFlow()
-
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
-
-    fun setError(message: String?) { _error.value = message }
 
     fun login(email: String, password: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
@@ -62,14 +58,23 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun googleSignIn(idToken: String, onSuccess: () -> Unit) {
+    fun googleSignIn(activityContext: Context, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            _isGoogleLoading.value = true
+            _isLoading.value = true
             _error.value = null
-            repository.googleAuth(idToken)
-                .onSuccess { onSuccess() }
-                .onFailure { _error.value = it.message }
-            _isGoogleLoading.value = false
+            try {
+                googleAuthHelper.getGoogleIdToken(activityContext)
+                    .onSuccess { idToken ->
+                        repository.googleAuth(idToken)
+                            .onSuccess { onSuccess() }
+                            .onFailure { _error.value = it.message }
+                    }
+                    .onFailure { _error.value = it.message }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Google sign-in failed"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 }
@@ -85,13 +90,10 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val isLoading by viewModel.isLoading.collectAsState()
-    val isGoogleLoading by viewModel.isGoogleLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Ambient background
         FloatingSymbolBackground()
 
         Column(
@@ -121,18 +123,8 @@ fun LoginScreen(
 
             // Google Sign-In Button (primary option)
             GoogleSignInButton(
-                onClick = {
-                    scope.launch {
-                        viewModel.googleAuthHelper.signIn(context)
-                            .onSuccess { idToken ->
-                                viewModel.googleSignIn(idToken, onLoginSuccess)
-                            }
-                            .onFailure { e ->
-                                viewModel.setError(e.message)
-                            }
-                    }
-                },
-                isLoading = isGoogleLoading,
+                onClick = { viewModel.googleSignIn(context, onLoginSuccess) },
+                isLoading = isLoading,
                 text = "Sign in with Google"
             )
 
@@ -198,7 +190,7 @@ fun LoginScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AlgoGreen),
-                enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank()
+                enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(

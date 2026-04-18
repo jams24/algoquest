@@ -1,5 +1,6 @@
 package com.algoquest.ui.screens
 
+import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -52,15 +53,12 @@ import kotlin.math.absoluteValue
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val repository: AlgoRepository,
-    val googleAuthHelper: GoogleAuthHelper
+    private val googleAuthHelper: GoogleAuthHelper
 ) : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
-    private val _isGoogleLoading = MutableStateFlow(false)
-    val isGoogleLoading = _isGoogleLoading.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
-    fun setError(message: String?) { _error.value = message }
     private val _registeredUsername = MutableStateFlow<String?>(null)
     val registeredUsername = _registeredUsername.asStateFlow()
 
@@ -75,14 +73,23 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    fun googleSignIn(idToken: String, onSuccess: () -> Unit) {
+    fun googleSignIn(activityContext: Context, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            _isGoogleLoading.value = true
+            _isLoading.value = true
             _error.value = null
-            repository.googleAuth(idToken)
-                .onSuccess { _registeredUsername.value = it.user.username; onSuccess() }
-                .onFailure { _error.value = it.message }
-            _isGoogleLoading.value = false
+            try {
+                googleAuthHelper.getGoogleIdToken(activityContext)
+                    .onSuccess { idToken ->
+                        repository.googleAuth(idToken)
+                            .onSuccess { _registeredUsername.value = it.user.username; onSuccess() }
+                            .onFailure { _error.value = it.message }
+                    }
+                    .onFailure { _error.value = it.message }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Google sign-in failed"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 }
@@ -1215,10 +1222,8 @@ private fun SignUpPage(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val isLoading by viewModel.isLoading.collectAsState()
-    val isGoogleLoading by viewModel.isGoogleLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
         AnimatedGradientBackground(alpha = 0.04f)
@@ -1239,20 +1244,8 @@ private fun SignUpPage(
 
             // Google Sign-In (primary)
             GoogleSignInButton(
-                onClick = {
-                    scope.launch {
-                        viewModel.googleAuthHelper.signIn(context)
-                            .onSuccess { idToken ->
-                                viewModel.googleSignIn(idToken, onSignUpSuccess)
-                            }
-                            .onFailure { e ->
-                                if (e.message != "Sign-in cancelled") {
-                                    viewModel.setError(e.message)
-                                }
-                            }
-                    }
-                },
-                isLoading = isGoogleLoading,
+                onClick = { viewModel.googleSignIn(context, onSignUpSuccess) },
+                isLoading = isLoading,
                 text = "Continue with Google"
             )
 
@@ -1297,7 +1290,7 @@ private fun SignUpPage(
                 Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AlgoGreen),
-                enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && username.isNotBlank() && password.length >= 6
+                enabled = !isLoading && email.isNotBlank() && username.isNotBlank() && password.length >= 6
             ) {
                 if (isLoading) CircularProgressIndicator(Modifier.size(24.dp), Color.White, strokeWidth = 2.dp)
                 else Text("CREATE ACCOUNT", fontWeight = FontWeight.Bold, fontSize = 16.sp)

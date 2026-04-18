@@ -2,19 +2,20 @@ package com.algoquest.data.auth
 
 import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.algoquest.BuildConfig
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 
 @Singleton
 class GoogleAuthHelper @Inject constructor(
@@ -22,62 +23,74 @@ class GoogleAuthHelper @Inject constructor(
 ) {
     private val credentialManager = CredentialManager.create(context)
 
-    suspend fun signIn(activityContext: Context): Result<String> {
+    suspend fun getGoogleIdToken(activityContext: Context): Result<String> {
+        val activity = activityContext as? Activity
+            ?: return Result.failure(Exception("Google Sign-In requires an Activity context"))
+
+        // Try the full Sign In with Google dialog first (most reliable),
+        // fall back to One Tap bottom sheet if that fails
         return try {
-            val activity = activityContext.findActivity()
-            if (activity == null) {
-                Log.e("GoogleAuth", "Could not find Activity from context: ${activityContext.javaClass.name}")
-                return Result.failure(Exception("Could not find Activity context"))
-            }
-
-            Log.d("GoogleAuth", "Starting Google Sign-In with client ID: ${BuildConfig.GOOGLE_WEB_CLIENT_ID}")
-
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-                .setAutoSelectEnabled(false)
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
-            Log.d("GoogleAuth", "Calling credentialManager.getCredential...")
-
-            val result = credentialManager.getCredential(
-                context = activity,
-                request = request
-            )
-
-            Log.d("GoogleAuth", "Got credential result, type: ${result.credential.type}")
-
-            val credential = result.credential
-            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-            val idToken = googleIdTokenCredential.idToken
-
-            Log.d("GoogleAuth", "Successfully got ID token")
-            Result.success(idToken)
+            signInWithGoogleButton(activity)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: GetCredentialCancellationException) {
-            Log.w("GoogleAuth", "Sign-in cancelled by user")
+            Log.d("GoogleAuth", "User cancelled")
             Result.failure(Exception("Sign-in cancelled"))
-        } catch (e: NoCredentialException) {
-            Log.e("GoogleAuth", "No credentials available: ${e.message}")
-            Result.failure(Exception("No Google accounts found. Please add a Google account to your device."))
-        } catch (e: GetCredentialException) {
-            Log.e("GoogleAuth", "GetCredentialException: type=${e.type}, message=${e.message}", e)
-            Result.failure(Exception("Google sign-in error: ${e.message}"))
         } catch (e: Exception) {
-            Log.e("GoogleAuth", "Unexpected error: ${e.javaClass.name}: ${e.message}", e)
-            Result.failure(Exception("Google sign-in failed: ${e.message}"))
+            Log.w("GoogleAuth", "Sign In With Google failed: ${e.message}, trying One Tap fallback")
+            try {
+                oneTapSignIn(activity)
+            } catch (e2: CancellationException) {
+                throw e2
+            } catch (e2: GetCredentialCancellationException) {
+                Log.d("GoogleAuth", "User cancelled")
+                Result.failure(Exception("Sign-in cancelled"))
+            } catch (e2: NoCredentialException) {
+                Log.e("GoogleAuth", "No credential available", e2)
+                Result.failure(Exception("No Google account found. Please add a Google account in Settings."))
+            } catch (e2: Exception) {
+                Log.e("GoogleAuth", "Google sign-in failed: ${e2::class.simpleName}: ${e2.message}", e2)
+                Result.failure(Exception("Google sign-in failed: ${e2.message}"))
+            }
         }
     }
-}
 
-private fun Context.findActivity(): Activity? {
-    var ctx = this
-    while (ctx is ContextWrapper) {
-        if (ctx is Activity) return ctx
-        ctx = ctx.baseContext
+    /** Full Sign In with Google dialog — shows the standard Google Sign-In consent screen */
+    private suspend fun signInWithGoogleButton(activity: Activity): Result<String> {
+        val signInOption = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(signInOption)
+            .build()
+
+        Log.d("GoogleAuth", "Trying Sign In With Google button flow")
+        val result = withTimeout(30_000L) {
+            credentialManager.getCredential(activity, request)
+        }
+        Log.d("GoogleAuth", "Got credential type: ${result.credential.type}")
+        val credential = GoogleIdTokenCredential.createFrom(result.credential.data)
+        return Result.success(credential.idToken)
     }
-    return null
+
+    /** One Tap bottom sheet — faster for returning users */
+    private suspend fun oneTapSignIn(activity: Activity): Result<String> {
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+            .setAutoSelectEnabled(false)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        Log.d("GoogleAuth", "Trying One Tap fallback")
+        val result = withTimeout(15_000L) {
+            credentialManager.getCredential(activity, request)
+        }
+        Log.d("GoogleAuth", "Got credential type: ${result.credential.type}")
+        val credential = GoogleIdTokenCredential.createFrom(result.credential.data)
+        return Result.success(credential.idToken)
+    }
 }
