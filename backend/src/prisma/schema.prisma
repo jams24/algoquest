@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ProblemStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum League {
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+  MASTER
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  username       String   @unique
+  passwordHash   String?
+  authProvider   String   @default("email") // "email" or "google"
+  googleId       String?  @unique
+  avatarUrl      String?
+  xp             Int      @default(0)
+  level          Int      @default(1)
+  hearts         Int      @default(5)
+  heartsUpdatedAt DateTime @default(now())
+  streak         Int      @default(0)
+  bestStreak     Int      @default(0)
+  lastActiveDate DateTime?
+  streakFreezes  Int      @default(1)
+  league         League   @default(BRONZE)
+  weeklyXp       Int      @default(0)
+  dailyGoal      Int      @default(3)
+  preferredLang  String   @default("python")
+  // Onboarding
+  experienceLevel String? // beginner, dabbled, semi-technical
+  buildGoals      String? // JSON array: ["websites","mobile","ai","saas","games"]
+  // Subscription
+  trialStartDate       DateTime? @default(now())
+  subscriptionStatus   String    @default("trial") // trial, active, expired, free
+  subscriptionExpiresAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  progress       UserProgress[]
+  achievements   UserAchievement[]
+  reviews        SpacedReview[]
+}
+
+model Topic {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String
+  icon        String
+  color       String
+  order       Int       @unique
+  problems    Problem[]
+}
+
+model Problem {
+  id              String     @id @default(uuid())
+  title           String
+  slug            String     @unique
+  difficulty      Difficulty
+  order           Int
+  topicId         String
+  topic           Topic      @relation(fields: [topicId], references: [id])
+  story           String
+  visualSteps     Json
+  pattern         String
+  patternExplanation String
+  solutions       Json       // { python: { code, lineExplanations }, java: {...}, cpp: {...} }
+  complexity      Json       // { time, space, simpleExplanation }
+  memoryTrick     String
+  quiz            Json       // array of quiz questions
+  hints           Json       // array of hint strings
+  commonMistakes  Json       // array of mistake strings
+  createdAt       DateTime   @default(now())
+
+  progress        UserProgress[]
+  reviews         SpacedReview[]
+  dailyChallenges DailyChallenge[]
+
+  @@unique([topicId, order])
+}
+
+model UserProgress {
+  id         String        @id @default(uuid())
+  userId     String
+  problemId  String
+  status     ProblemStatus @default(LOCKED)
+  score      Int           @default(0)
+  bestScore  Int           @default(0)
+  attempts   Int           @default(0)
+  stage      Int           @default(0) // 0=not started, 1=learn, 2=understand, 3=practice, 4=master
+  lastAttempt DateTime?
+  completedAt DateTime?
+
+  user       User    @relation(fields: [userId], references: [id])
+  problem    Problem @relation(fields: [problemId], references: [id])
+
+  @@unique([userId, problemId])
+}
+
+model Achievement {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String
+  icon        String
+  criteria    Json   // { type: "problems_completed", count: 1 } etc.
+
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user          User        @relation(fields: [userId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+model DailyChallenge {
+  id        String   @id @default(uuid())
+  date      DateTime @unique @db.Date
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id])
+}
+
+model SpacedReview {
+  id           String   @id @default(uuid())
+  userId       String
+  problemId    String
+  nextReview   DateTime
+  interval     Int      @default(1) // days
+  easeFactor   Float    @default(2.5)
+  repetitions  Int      @default(0)
+
+  user         User    @relation(fields: [userId], references: [id])
+  problem      Problem @relation(fields: [problemId], references: [id])
+
+  @@unique([userId, problemId])
+}
