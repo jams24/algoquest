@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,8 +24,11 @@ import androidx.lifecycle.viewModelScope
 import com.algoquest.data.model.ProgressStats
 import com.algoquest.data.model.UserProfile
 import com.algoquest.data.repository.AlgoRepository
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.ui.components.*
 import com.algoquest.ui.theme.*
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +37,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val repository: AlgoRepository
+    private val repository: AlgoRepository,
+    val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
     private val _profile = MutableStateFlow<UserProfile?>(null)
     val profile = _profile.asStateFlow()
@@ -166,6 +171,80 @@ fun ProfileScreen(
                         }
                         Icon(Icons.Filled.ChevronRight, null)
                     }
+                }
+            }
+
+            // Upgrade to Pro / Subscription status
+            item {
+                val subState by viewModel.subscriptionManager.state.collectAsState()
+                var showPaywall by remember { mutableStateOf(false) }
+
+                if (subState.isPro) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = AlgoGreen.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83D\uDC8E", fontSize = 28.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("AlgoQuest Pro", fontWeight = FontWeight.Bold, color = AlgoGreen)
+                                Text(
+                                    if (subState.isTrialActive) "Free trial active"
+                                    else "${subState.activeSubscription ?: "Active"} plan",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            Icon(Icons.Filled.CheckCircle, null, tint = AlgoGreen)
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = AlgoPurple.copy(alpha = 0.1f)),
+                        onClick = { showPaywall = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83D\uDE80", fontSize = 28.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Upgrade to Pro", fontWeight = FontWeight.Bold, color = AlgoPurple)
+                                Text("Unlock all 150 problems & features", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Icon(Icons.Filled.ChevronRight, null, tint = AlgoPurple)
+                        }
+                    }
+                }
+
+                // Restore purchases
+                if (!subState.isPro) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val scope = rememberCoroutineScope()
+                    TextButton(
+                        onClick = { scope.launch { viewModel.subscriptionManager.restorePurchases() } },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Restore Purchases", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    }
+                }
+
+                if (showPaywall) {
+                    PaywallDialog(
+                        PaywallDialogOptions.Builder()
+                            .setDismissRequest {
+                                showPaywall = false
+                                viewModel.subscriptionManager.refreshSubscriptionStatus()
+                            }
+                            .build()
+                    )
                 }
             }
 
