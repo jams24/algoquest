@@ -17,7 +17,7 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"https://f4e453d9.serverme.site/api/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://algoquest.serverme.site/api/\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"YOUR_GOOGLE_WEB_CLIENT_ID\"")
     }
 
