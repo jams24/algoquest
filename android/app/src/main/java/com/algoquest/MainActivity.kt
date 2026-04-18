@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.algoquest.data.remote.PrefsKeys
 import com.algoquest.data.remote.dataStore
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.navigation.AlgoNavGraph
 import com.algoquest.navigation.Screen
 import com.algoquest.ui.components.AlgoBottomNavBar
@@ -25,9 +26,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var subscriptionManager: SubscriptionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -50,8 +55,11 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
-                // Show bottom nav only on main screens
                 val showBottomNav = currentRoute in bottomNavItems.map { it.route }
+
+                // Subscription state
+                val subState by subscriptionManager.state.collectAsState()
+                val isPro = subState.isPro
 
                 // Mark onboarding as seen when navigating away
                 LaunchedEffect(currentRoute) {

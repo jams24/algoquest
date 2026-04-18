@@ -10,20 +10,15 @@ import dagger.hilt.android.HiltAndroidApp
 class AlgoQuestApp : Application() {
 
     companion object {
-        // TODO: Replace with your AlgoQuest RevenueCat API key
-        const val REVENUECAT_API_KEY = "REPLACE_WITH_YOUR_ALGOQUEST_API_KEY"
+        const val REVENUECAT_API_KEY = "test_MkYIbmzoRniGVnKrlHejhPntLuE"
+        const val ENTITLEMENT_ID = "algoquest Pro"
     }
 
     override fun onCreate() {
         super.onCreate()
-
-        // Only configure if key is set
-        if (REVENUECAT_API_KEY != "REPLACE_WITH_YOUR_ALGOQUEST_API_KEY") {
-            Purchases.logLevel = LogLevel.DEBUG
-            Purchases.configure(
-                PurchasesConfiguration.Builder(this, REVENUECAT_API_KEY)
-                    .build()
-            )
-        }
+        Purchases.logLevel = LogLevel.DEBUG
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, REVENUECAT_API_KEY).build()
+        )
     }
 }

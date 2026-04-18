@@ -10,6 +10,7 @@ import com.algoquest.data.model.*
 import com.algoquest.data.remote.ApiService
 import com.algoquest.data.remote.PrefsKeys
 import com.algoquest.data.remote.dataStore
+import com.algoquest.data.subscription.SubscriptionManager
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -20,6 +21,7 @@ class AlgoRepository @Inject constructor(
     private val api: ApiService,
     private val topicDao: TopicDao,
     private val problemDao: ProblemDao,
+    private val subscriptionManager: SubscriptionManager,
     @ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
@@ -31,6 +33,7 @@ class AlgoRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()!!
                 saveTokens(body.accessToken, body.refreshToken, body.user.id)
+                subscriptionManager.loginUser(body.user.id)
                 Result.success(body)
             } else {
                 Result.failure(Exception("Registration failed: ${response.code()}"))
@@ -46,6 +49,7 @@ class AlgoRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()!!
                 saveTokens(body.accessToken, body.refreshToken, body.user.id)
+                subscriptionManager.loginUser(body.user.id)
                 Result.success(body)
             } else {
                 Result.failure(Exception("Invalid credentials"))
@@ -61,6 +65,7 @@ class AlgoRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()!!
                 saveTokens(body.accessToken, body.refreshToken, body.user.id)
+                subscriptionManager.loginUser(body.user.id)
                 Result.success(body)
             } else {
                 Result.failure(Exception("Google sign-in failed: ${response.code()}"))
@@ -73,6 +78,7 @@ class AlgoRepository @Inject constructor(
     suspend fun getProfile(): Result<UserProfile> = apiCall { api.getProfile() }
 
     suspend fun logout() {
+        subscriptionManager.logoutUser()
         context.dataStore.edit { it.clear() }
     }
 

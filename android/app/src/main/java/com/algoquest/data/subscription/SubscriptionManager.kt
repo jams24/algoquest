@@ -1,5 +1,7 @@
 package com.algoquest.data.subscription
 
+import android.util.Log
+import com.algoquest.AlgoQuestApp
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitCustomerInfo
@@ -25,38 +27,47 @@ data class SubscriptionState(
 @Singleton
 class SubscriptionManager @Inject constructor() {
 
-    companion object {
-        // Replace with your AlgoQuest RevenueCat API key
-        const val ENTITLEMENT_ID = "algoquest Pro"
-    }
-
     private val scope = CoroutineScope(Dispatchers.IO)
     private val _state = MutableStateFlow(SubscriptionState())
     val state = _state.asStateFlow()
 
     init { refreshSubscriptionStatus() }
 
+    private fun purchasesOrNull(): Purchases? = try {
+        Purchases.sharedInstance
+    } catch (e: Exception) {
+        null
+    }
+
     fun refreshSubscriptionStatus() {
+        val purchases = purchasesOrNull()
+        if (purchases == null) {
+            _state.value = SubscriptionState(isLoading = false)
+            return
+        }
         _state.value = _state.value.copy(isLoading = true)
         scope.launch {
             try {
-                val info = Purchases.sharedInstance.awaitCustomerInfo()
+                val info = purchases.awaitCustomerInfo()
                 _state.value = parseCustomerInfo(info)
             } catch (e: Exception) {
+                Log.w("SubscriptionManager", "refreshSubscriptionStatus failed: ${e.message}")
                 _state.value = SubscriptionState(isLoading = false)
             }
         }
     }
 
     private fun parseCustomerInfo(info: CustomerInfo): SubscriptionState {
-        val entitlement = info.entitlements.active[ENTITLEMENT_ID]
+        val entitlement = info.entitlements.active[AlgoQuestApp.ENTITLEMENT_ID]
         val isPro = entitlement != null
+
         val activeSubscription = when {
             entitlement?.productIdentifier?.contains("lifetime") == true -> "lifetime"
             entitlement?.productIdentifier?.contains("yearly") == true -> "yearly"
             entitlement?.productIdentifier?.contains("monthly") == true -> "monthly"
             else -> null
         }
+
         return SubscriptionState(
             isPro = isPro,
             isTrialActive = entitlement?.periodType?.name == "TRIAL",
@@ -67,26 +78,31 @@ class SubscriptionManager @Inject constructor() {
     }
 
     fun loginUser(userId: String) {
+        val purchases = purchasesOrNull() ?: return
         scope.launch {
             try {
-                val result = Purchases.sharedInstance.awaitLogIn(userId)
+                val result = purchases.awaitLogIn(userId)
                 _state.value = parseCustomerInfo(result.customerInfo)
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                Log.w("SubscriptionManager", "loginUser failed: ${e.message}")
+            }
         }
     }
 
     fun logoutUser() {
+        val purchases = purchasesOrNull() ?: return
         scope.launch {
             try {
-                val info = Purchases.sharedInstance.awaitLogOut()
+                val info = purchases.awaitLogOut()
                 _state.value = parseCustomerInfo(info)
-            } catch (e: Exception) { }
+            } catch (e: Exception) { /* ignore */ }
         }
     }
 
     suspend fun restorePurchases(): CustomerInfo? {
+        val purchases = purchasesOrNull() ?: return null
         return try {
-            val info = Purchases.sharedInstance.awaitRestore()
+            val info = purchases.awaitRestore()
             _state.value = parseCustomerInfo(info)
             info
         } catch (e: Exception) { null }
