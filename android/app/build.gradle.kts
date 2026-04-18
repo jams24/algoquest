@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.algoquest"
+    namespace = "com.algoquest.rimola"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.algoquest"
+        applicationId = "com.algoquest.rimola"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -21,10 +21,20 @@ android {
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"80094724512-loh1rluobjbb69h74vveb2urf1uc5bp2.apps.googleusercontent.com\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../algoquest-release.jks")
+            storePassword = "AlgoQuest2026!"
+            keyAlias = "algoquest"
+            keyPassword = "AlgoQuest2026!"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

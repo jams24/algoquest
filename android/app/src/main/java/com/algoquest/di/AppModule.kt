@@ -2,7 +2,7 @@ package com.algoquest.di
 
 import android.content.Context
 import androidx.room.Room
-import com.algoquest.BuildConfig
+import com.algoquest.rimola.BuildConfig
 import com.algoquest.data.local.AlgoDatabase
 import com.algoquest.data.local.ProblemDao
 import com.algoquest.data.local.TopicDao

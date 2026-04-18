@@ -75,7 +75,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             } ?: return null
 
             // Build refresh request manually (can't use Retrofit here — would be circular)
-            val baseUrl = com.algoquest.BuildConfig.API_BASE_URL
+            val baseUrl = com.algoquest.rimola.BuildConfig.API_BASE_URL
             val json = JSONObject().put("refreshToken", refreshToken).toString()
             val body = json.toRequestBody("application/json".toMediaType())
 
