@@ -121,6 +121,85 @@ fun ProfileScreen(
                 }
             }
 
+            // Upgrade to Pro / Subscription status (prominent, top position)
+            item {
+                val subState by viewModel.subscriptionManager.state.collectAsState()
+                var showPaywall by remember { mutableStateOf(false) }
+
+                if (subState.isPro) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = AlgoGreen.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83D\uDC8E", fontSize = 32.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("AlgoQuest Pro", fontWeight = FontWeight.Bold, color = AlgoGreen, fontSize = 18.sp)
+                                Text(
+                                    if (subState.isTrialActive) "Free trial active"
+                                    else "${subState.activeSubscription ?: "Active"} plan",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            Icon(Icons.Filled.CheckCircle, null, tint = AlgoGreen, modifier = Modifier.size(28.dp))
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = AlgoPurple.copy(alpha = 0.12f)),
+                        onClick = { showPaywall = true }
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("\uD83D\uDE80", fontSize = 32.sp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Upgrade to Pro", fontWeight = FontWeight.ExtraBold, color = AlgoPurple, fontSize = 20.sp)
+                                    Text("Unlock all 150 problems & premium features", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { showPaywall = true },
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AlgoPurple)
+                            ) {
+                                Text("START FREE TRIAL", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // Restore purchases
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val scope = rememberCoroutineScope()
+                    TextButton(
+                        onClick = { scope.launch { viewModel.subscriptionManager.restorePurchases() } },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Restore Purchases", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                    }
+                }
+
+                if (showPaywall) {
+                    PaywallDialog(
+                        PaywallDialogOptions.Builder()
+                            .setDismissRequest {
+                                showPaywall = false
+                                viewModel.subscriptionManager.refreshSubscriptionStatus()
+                            }
+                            .build()
+                    )
+                }
+            }
+
             // Topic progress
             item {
                 Card(shape = RoundedCornerShape(16.dp)) {
@@ -171,80 +250,6 @@ fun ProfileScreen(
                         }
                         Icon(Icons.Filled.ChevronRight, null)
                     }
-                }
-            }
-
-            // Upgrade to Pro / Subscription status
-            item {
-                val subState by viewModel.subscriptionManager.state.collectAsState()
-                var showPaywall by remember { mutableStateOf(false) }
-
-                if (subState.isPro) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = AlgoGreen.copy(alpha = 0.1f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("\uD83D\uDC8E", fontSize = 28.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("AlgoQuest Pro", fontWeight = FontWeight.Bold, color = AlgoGreen)
-                                Text(
-                                    if (subState.isTrialActive) "Free trial active"
-                                    else "${subState.activeSubscription ?: "Active"} plan",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                            }
-                            Icon(Icons.Filled.CheckCircle, null, tint = AlgoGreen)
-                        }
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = AlgoPurple.copy(alpha = 0.1f)),
-                        onClick = { showPaywall = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("\uD83D\uDE80", fontSize = 28.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Upgrade to Pro", fontWeight = FontWeight.Bold, color = AlgoPurple)
-                                Text("Unlock all 150 problems & features", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                            }
-                            Icon(Icons.Filled.ChevronRight, null, tint = AlgoPurple)
-                        }
-                    }
-                }
-
-                // Restore purchases
-                if (!subState.isPro) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val scope = rememberCoroutineScope()
-                    TextButton(
-                        onClick = { scope.launch { viewModel.subscriptionManager.restorePurchases() } },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Restore Purchases", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    }
-                }
-
-                if (showPaywall) {
-                    PaywallDialog(
-                        PaywallDialogOptions.Builder()
-                            .setDismissRequest {
-                                showPaywall = false
-                                viewModel.subscriptionManager.refreshSubscriptionStatus()
-                            }
-                            .build()
-                    )
                 }
             }
 
