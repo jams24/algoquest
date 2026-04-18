@@ -40,8 +40,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.algoquest.data.auth.GoogleAuthHelper
 import com.algoquest.data.repository.AlgoRepository
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.ui.components.*
 import com.algoquest.ui.theme.*
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +56,8 @@ import kotlin.math.absoluteValue
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val repository: AlgoRepository,
-    private val googleAuthHelper: GoogleAuthHelper
+    private val googleAuthHelper: GoogleAuthHelper,
+    val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -133,7 +137,7 @@ fun OnboardingScreen(
                     onSignUpSuccess = { signedUp = true; next() },
                     onNavigateToLogin = onNavigateToLogin
                 )
-                14 -> WelcomeCelebration(registeredUsername ?: "Champion", onComplete)
+                14 -> WelcomeCelebration(registeredUsername ?: "Champion", onComplete, viewModel.subscriptionManager)
             }
         }
 
@@ -1300,15 +1304,20 @@ private fun SignUpPage(
                 Text("Already have an account? Log in")
             }
             Spacer(Modifier.height(8.dp))
-            Text("Free for 7 days, then \$9.99/month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+            Text("Free for 3 days, then \$9.99/month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
             Spacer(Modifier.height(32.dp))
         }
     }
 }
 
-// ==================== Page 14: Welcome Celebration ====================
+// ==================== Page 14: Welcome Celebration + Paywall ====================
 @Composable
-private fun WelcomeCelebration(username: String, onComplete: () -> Unit) {
+private fun WelcomeCelebration(
+    username: String,
+    onComplete: () -> Unit,
+    subscriptionManager: SubscriptionManager? = null
+) {
+    var showPaywall by remember { mutableStateOf(false) }
     val p = rememberInfiniteTransition(label = "cta")
     val s by p.animateFloat(1f, 1.03f, infiniteRepeatable(tween(1500), RepeatMode.Reverse), label = "s")
     val titleAlpha = remember { Animatable(0f) }
@@ -1357,7 +1366,7 @@ private fun WelcomeCelebration(username: String, onComplete: () -> Unit) {
                 modifier = Modifier.graphicsLayer { alpha = contentAlpha.value },
                 glowColor = AlgoGreen
             ) {
-                Text("Your 7-Day Free Trial:", fontWeight = FontWeight.Bold, color = AlgoGreen, fontSize = 16.sp)
+                Text("Your 3-Day Free Trial includes:", fontWeight = FontWeight.Bold, color = AlgoGreen, fontSize = 16.sp)
                 Spacer(Modifier.height(12.dp))
                 listOf(
                     "\u2705 All 150 NeetCode problems",
@@ -1371,16 +1380,35 @@ private fun WelcomeCelebration(username: String, onComplete: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(28.dp))
 
             Button(
-                onClick = onComplete,
+                onClick = { showPaywall = true },
                 Modifier.fillMaxWidth().height(60.dp).scale(s),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AlgoGreen)
             ) {
-                Text("LET'S GO! \uD83D\uDE80", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                Text("START 3-DAY FREE TRIAL \uD83D\uDE80", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            TextButton(onClick = onComplete) {
+                Text("Maybe later \u2014 explore free content", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         }
+    }
+
+    // RevenueCat PaywallDialog overlay
+    if (showPaywall) {
+        PaywallDialog(
+            PaywallDialogOptions.Builder()
+                .setDismissRequest {
+                    showPaywall = false
+                    subscriptionManager?.refreshSubscriptionStatus()
+                    onComplete()
+                }
+                .build()
+        )
     }
 }
