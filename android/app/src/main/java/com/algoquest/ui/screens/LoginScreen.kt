@@ -128,9 +128,7 @@ fun LoginScreen(
                                 viewModel.googleSignIn(idToken, onLoginSuccess)
                             }
                             .onFailure { e ->
-                                if (e.message != "Sign-in cancelled") {
-                                    viewModel.setError(e.message)
-                                }
+                                viewModel.setError(e.message)
                             }
                     }
                 },
