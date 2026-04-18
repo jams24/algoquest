@@ -18,7 +18,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"https://algoquest.serverme.site/api/\"")
-        buildConfigField("String", "REVENUECAT_API_KEY", "\"test_MkYIbmzoRniGVnKrlHejhPntLuE\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"goog_ZkqlMbxjxdAyQeTxzgazHtdasZk\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"80094724512-loh1rluobjbb69h74vveb2urf1uc5bp2.apps.googleusercontent.com\"")
     }
 
