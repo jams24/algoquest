@@ -28,8 +28,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.algoquest.data.model.*
 import com.algoquest.data.repository.AlgoRepository
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.ui.components.*
 import com.algoquest.ui.theme.*
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +54,7 @@ data class QuizState(
 @HiltViewModel
 class QuizViewModel @Inject constructor(
     private val repository: AlgoRepository,
+    val subscriptionManager: SubscriptionManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val slug: String = savedStateHandle["slug"] ?: ""
@@ -60,11 +64,24 @@ class QuizViewModel @Inject constructor(
     val state = _state.asStateFlow()
     private val _hearts = MutableStateFlow(5)
     val hearts = _hearts.asStateFlow()
+    private val _needsSubscription = MutableStateFlow(false)
+    val needsSubscription = _needsSubscription.asStateFlow()
 
     init {
         viewModelScope.launch {
-            repository.getProblem(slug).onSuccess { _problem.value = it }
+            repository.getProblem(slug)
+                .onSuccess { _problem.value = it }
+                .onFailure { if (it is SubscriptionRequiredException) _needsSubscription.value = true }
             repository.getProfile().onSuccess { _hearts.value = it.hearts }
+        }
+    }
+
+    fun retryLoad() {
+        viewModelScope.launch {
+            _needsSubscription.value = false
+            repository.getProblem(slug)
+                .onSuccess { _problem.value = it }
+                .onFailure { if (it is SubscriptionRequiredException) _needsSubscription.value = true }
         }
     }
 
@@ -130,6 +147,18 @@ fun QuizScreen(
     val problem by viewModel.problem.collectAsState()
     val state by viewModel.state.collectAsState()
     val hearts by viewModel.hearts.collectAsState()
+    val needsSubscription by viewModel.needsSubscription.collectAsState()
+
+    if (needsSubscription) {
+        PaywallDialog(
+            PaywallDialogOptions.Builder()
+                .setDismissRequest {
+                    viewModel.subscriptionManager.refreshSubscriptionStatus()
+                    viewModel.retryLoad()
+                }
+                .build()
+        )
+    }
 
     Scaffold(
         topBar = {

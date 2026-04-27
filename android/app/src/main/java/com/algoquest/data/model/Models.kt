@@ -5,6 +5,8 @@ import com.google.gson.annotations.SerializedName
 // ==================== Auth ====================
 data class RegisterRequest(val email: String, val username: String, val password: String)
 data class SyncSubscriptionRequest(val isPro: Boolean, val expirationDate: String?, val productId: String?)
+
+class SubscriptionRequiredException : Exception("Subscription required")
 data class LoginRequest(val email: String, val password: String)
 data class GoogleAuthRequest(val idToken: String)
 data class AuthResponse(
@@ -32,7 +34,13 @@ data class UserProfile(
     val dailyGoal: Int = 3,
     val preferredLang: String = "python",
     val avatarUrl: String? = null,
-    val authProvider: String = "email"
+    val authProvider: String = "email",
+    // Subscription fields from backend
+    val subscriptionStatus: String = "trial",
+    val subscriptionExpiresAt: String? = null,
+    val isPro: Boolean = false,
+    val isTrialActive: Boolean = false,
+    val trialDaysRemaining: Int = 3
 )
 
 // ==================== Topics & Problems ====================

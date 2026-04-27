@@ -172,6 +172,13 @@ class AlgoRepository @Inject constructor(
             val response = call()
             if (response.isSuccessful) {
                 Result.success(response.body()!!)
+            } else if (response.code() == 403) {
+                val errorBody = response.errorBody()?.string() ?: ""
+                if (errorBody.contains("SUBSCRIPTION_REQUIRED")) {
+                    Result.failure(SubscriptionRequiredException())
+                } else {
+                    Result.failure(Exception("API error: ${response.code()}"))
+                }
             } else {
                 Result.failure(Exception("API error: ${response.code()}"))
             }

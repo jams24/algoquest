@@ -26,9 +26,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.algoquest.data.model.Problem
+import com.algoquest.data.model.SubscriptionRequiredException
 import com.algoquest.data.repository.AlgoRepository
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.ui.components.*
 import com.algoquest.ui.theme.*
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +42,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LessonViewModel @Inject constructor(
     private val repository: AlgoRepository,
+    val subscriptionManager: SubscriptionManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val slug: String = savedStateHandle["slug"] ?: ""
@@ -49,6 +54,8 @@ class LessonViewModel @Inject constructor(
     val selectedLang = _selectedLang.asStateFlow()
     private val _isError = MutableStateFlow(false)
     val isError = _isError.asStateFlow()
+    private val _needsSubscription = MutableStateFlow(false)
+    val needsSubscription = _needsSubscription.asStateFlow()
     private val _currentVisualStep = MutableStateFlow(0)
     val currentVisualStep = _currentVisualStep.asStateFlow()
     private val _highlightedCodeLine = MutableStateFlow<Int?>(null)
@@ -67,9 +74,13 @@ class LessonViewModel @Inject constructor(
     fun loadProblem() {
         viewModelScope.launch {
             _isError.value = false
+            _needsSubscription.value = false
             repository.getProblem(slug)
                 .onSuccess { _problem.value = it }
-                .onFailure { _isError.value = true }
+                .onFailure { error ->
+                    if (error is SubscriptionRequiredException) _needsSubscription.value = true
+                    else _isError.value = true
+                }
         }
     }
 
@@ -110,6 +121,18 @@ fun LessonScreen(
     val highlightedLine by viewModel.highlightedCodeLine.collectAsState()
     val hintLevel by viewModel.showHint.collectAsState()
     val isError by viewModel.isError.collectAsState()
+    val needsSubscription by viewModel.needsSubscription.collectAsState()
+
+    if (needsSubscription) {
+        PaywallDialog(
+            PaywallDialogOptions.Builder()
+                .setDismissRequest {
+                    viewModel.subscriptionManager.refreshSubscriptionStatus()
+                    viewModel.loadProblem()
+                }
+                .build()
+        )
+    }
 
     Scaffold(
         topBar = {

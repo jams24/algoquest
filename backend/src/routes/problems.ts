@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, requireSubscription, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -126,8 +126,8 @@ router.get('/topics/:slug', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// Get a single problem with full content
-router.get('/:slug', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// Get a single problem with full content (requires active subscription or trial)
+router.get('/:slug', authenticate, requireSubscription, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const slug = req.params.slug as string;
     const problem = await prisma.problem.findUnique({

@@ -24,8 +24,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.algoquest.data.model.*
 import com.algoquest.data.repository.AlgoRepository
+import com.algoquest.data.subscription.SubscriptionManager
 import com.algoquest.ui.components.*
 import com.algoquest.ui.theme.*
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,10 +50,13 @@ data class InterviewState(
 
 @HiltViewModel
 class InterviewPrepViewModel @Inject constructor(
-    private val repository: AlgoRepository
+    private val repository: AlgoRepository,
+    val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
     private val _state = MutableStateFlow(InterviewState())
     val state = _state.asStateFlow()
+    private val _needsSubscription = MutableStateFlow(false)
+    val needsSubscription = _needsSubscription.asStateFlow()
     private var timerJob: Job? = null
 
     fun startInterview(difficulty: String) {
@@ -77,7 +83,9 @@ class InterviewPrepViewModel @Inject constructor(
 
     private fun loadProblem(slug: String, difficulty: String) {
         viewModelScope.launch {
-            repository.getProblem(slug).onSuccess { problem ->
+            val result = repository.getProblem(slug)
+            result.onFailure { if (it is SubscriptionRequiredException) _needsSubscription.value = true }
+            result.onSuccess { problem ->
                 val timeSeconds = when (problem.difficulty.uppercase()) {
                     "EASY" -> 15 * 60    // 15 min
                     "MEDIUM" -> 25 * 60  // 25 min
@@ -126,6 +134,10 @@ class InterviewPrepViewModel @Inject constructor(
         timerJob?.cancel()
         _state.value = InterviewState()
     }
+
+    fun resetSubscriptionGate() {
+        _needsSubscription.value = false
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +148,18 @@ fun InterviewPrepScreen(
     viewModel: InterviewPrepViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val needsSubscription by viewModel.needsSubscription.collectAsState()
+
+    if (needsSubscription) {
+        PaywallDialog(
+            PaywallDialogOptions.Builder()
+                .setDismissRequest {
+                    viewModel.subscriptionManager.refreshSubscriptionStatus()
+                    viewModel.resetSubscriptionGate()
+                }
+                .build()
+        )
+    }
 
     Scaffold(
         topBar = {
