@@ -2,6 +2,8 @@ package com.algoquest.data.subscription
 
 import android.util.Log
 import com.algoquest.AlgoQuestApp
+import com.algoquest.data.model.SyncSubscriptionRequest
+import com.algoquest.data.remote.ApiService
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitCustomerInfo
@@ -25,7 +27,9 @@ data class SubscriptionState(
 )
 
 @Singleton
-class SubscriptionManager @Inject constructor() {
+class SubscriptionManager @Inject constructor(
+    private val api: ApiService
+) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val _state = MutableStateFlow(SubscriptionState())
@@ -49,7 +53,9 @@ class SubscriptionManager @Inject constructor() {
         scope.launch {
             try {
                 val info = purchases.awaitCustomerInfo()
-                _state.value = parseCustomerInfo(info)
+                val newState = parseCustomerInfo(info)
+                _state.value = newState
+                syncToBackend(newState)
             } catch (e: Exception) {
                 Log.w("SubscriptionManager", "refreshSubscriptionStatus failed: ${e.message}")
                 _state.value = SubscriptionState(isLoading = false)
@@ -77,12 +83,29 @@ class SubscriptionManager @Inject constructor() {
         )
     }
 
+    private suspend fun syncToBackend(state: SubscriptionState) {
+        try {
+            api.syncSubscription(
+                SyncSubscriptionRequest(
+                    isPro = state.isPro,
+                    expirationDate = state.expirationDate,
+                    productId = state.activeSubscription
+                )
+            )
+        } catch (e: Exception) {
+            // Non-fatal — backend will reconcile via webhook or next app open
+            Log.w("SubscriptionManager", "syncToBackend failed: ${e.message}")
+        }
+    }
+
     fun loginUser(userId: String) {
         val purchases = purchasesOrNull() ?: return
         scope.launch {
             try {
                 val result = purchases.awaitLogIn(userId)
-                _state.value = parseCustomerInfo(result.customerInfo)
+                val newState = parseCustomerInfo(result.customerInfo)
+                _state.value = newState
+                syncToBackend(newState)
             } catch (e: Exception) {
                 Log.w("SubscriptionManager", "loginUser failed: ${e.message}")
             }
@@ -103,7 +126,9 @@ class SubscriptionManager @Inject constructor() {
         val purchases = purchasesOrNull() ?: return null
         return try {
             val info = purchases.awaitRestore()
-            _state.value = parseCustomerInfo(info)
+            val newState = parseCustomerInfo(info)
+            _state.value = newState
+            syncToBackend(newState)
             info
         } catch (e: Exception) { null }
     }

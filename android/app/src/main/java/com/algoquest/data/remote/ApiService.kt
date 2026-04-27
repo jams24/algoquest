@@ -22,6 +22,9 @@ interface ApiService {
     @GET("auth/me")
     suspend fun getProfile(): Response<UserProfile>
 
+    @POST("auth/sync-subscription")
+    suspend fun syncSubscription(@Body request: SyncSubscriptionRequest): Response<Unit>
+
     // ==================== Problems ====================
     @GET("problems/search/{query}")
     suspend fun searchProblems(@Path("query") query: String): Response<List<SearchResult>>

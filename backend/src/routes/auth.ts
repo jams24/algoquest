@@ -196,17 +196,55 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
     const heartsToAdd = Math.floor(msSinceUpdate / (30 * 60 * 1000));
     const currentHearts = Math.min(5, user.hearts + heartsToAdd);
 
+    // Auto-downgrade if paid subscription has expired
+    let effectiveStatus = user.subscriptionStatus;
+    if (
+      user.subscriptionStatus === 'active' &&
+      user.subscriptionExpiresAt &&
+      user.subscriptionExpiresAt < now
+    ) {
+      effectiveStatus = 'expired';
+      // Persist the downgrade so subsequent calls are fast
+      await prisma.user.update({
+        where: { id: req.userId },
+        data: { subscriptionStatus: 'expired' },
+      });
+    }
+
     // Trial/subscription info
     const trialStart = user.trialStartDate ? new Date(user.trialStartDate) : null;
-    const trialDaysTotal = 7;
+    const trialDaysTotal = 3;
     const trialDaysUsed = trialStart ? Math.floor((now.getTime() - trialStart.getTime()) / (24 * 60 * 60 * 1000)) : 0;
     const trialDaysRemaining = Math.max(0, trialDaysTotal - trialDaysUsed);
-    const isTrialActive = user.subscriptionStatus === 'trial' && trialDaysRemaining > 0;
-    const isPro = user.subscriptionStatus === 'active' || isTrialActive;
+    const isTrialActive = effectiveStatus === 'trial' && trialDaysRemaining > 0;
+    const isPro = effectiveStatus === 'active' || isTrialActive;
 
-    res.json({ ...user, hearts: currentHearts, isTrialActive, trialDaysRemaining, isPro });
+    res.json({ ...user, subscriptionStatus: effectiveStatus, hearts: currentHearts, isTrialActive, trialDaysRemaining, isPro });
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Sync subscription status from RevenueCat (called by app after purchase/restore)
+router.post('/sync-subscription', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { isPro, expirationDate, productId } = req.body;
+
+    const status = isPro ? 'active' : 'expired';
+    const expiresAt = expirationDate ? new Date(expirationDate) : null;
+
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        subscriptionStatus: status,
+        subscriptionExpiresAt: expiresAt,
+      },
+    });
+
+    res.json({ success: true, subscriptionStatus: status, subscriptionExpiresAt: expiresAt });
+  } catch (error) {
+    console.error('Sync subscription error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -8,6 +8,7 @@ import progressRoutes from './routes/progress';
 import leaderboardRoutes from './routes/leaderboard';
 import dailyRoutes from './routes/daily';
 import gamificationRoutes from './routes/gamification';
+import webhookRoutes from './routes/webhook';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/daily', dailyRoutes);
 app.use('/api/gamification', gamificationRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
