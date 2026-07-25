@@ -260,12 +260,33 @@ data class DesignTrackDetail(
     val lessons: List<DesignLessonSummary>
 )
 
-data class DesignTradeoff(val pro: String, val con: String)
+// Matches API: {step, title, description, diagram}
+data class DesignDiagramStep(
+    val step: Int,
+    val title: String,
+    val description: String,
+    val diagram: String
+)
 
+// Matches API: {title, optionA, optionB, recommendation, reasoning}
+data class DesignTradeoff(
+    val title: String,
+    val optionA: String,
+    val optionB: String,
+    val recommendation: String,
+    val reasoning: String
+)
+
+// Matches API: {scenario, reason}
+data class DesignWhenItem(val scenario: String, val reason: String)
+
+// Matches API: {type, question, options?, correct?, answer?, explanation}
 data class DesignQuizQuestion(
+    val type: String,
     val question: String,
-    val options: List<String>,
-    val correct: Int,
+    val options: List<String>? = null,
+    val correct: Int? = null,
+    val answer: String? = null,
     val explanation: String
 )
 
@@ -277,10 +298,10 @@ data class DesignLesson(
     val summary: String,
     val analogy: String,
     val diagram: String,
-    val diagramSteps: List<String>,
+    val diagramSteps: List<DesignDiagramStep>,
     val tradeoffs: List<DesignTradeoff>,
-    val whenToUse: List<String>,
-    val whenNotToUse: List<String>,
+    val whenToUse: List<DesignWhenItem>,
+    val whenNotToUse: List<DesignWhenItem>,
     val keyPoints: List<String>,
     val quiz: List<DesignQuizQuestion>,
     val track: DesignTrackBrief,

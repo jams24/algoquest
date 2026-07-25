@@ -476,7 +476,8 @@ class DesignLessonViewModel @Inject constructor(
     fun nextQuestion() {
         val lesson = _lesson.value ?: return
         val qi = _quizIndex.value + 1
-        if (qi >= lesson.quiz.size) {
+        val mcCount = lesson.quiz.count { it.type == "multiple_choice" && !it.options.isNullOrEmpty() }
+        if (qi >= mcCount) {
             // Quiz done — complete the lesson
             viewModelScope.launch {
                 val result = repository.submitDesignLessonProgress(
@@ -776,8 +777,18 @@ private fun DiagramStage(lesson: DesignLesson, trackColor: Color, onNext: () -> 
                             fontSize = 12.sp, color = trackColor)
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text(lesson.diagramSteps[currentStep],
-                        style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp)
+                    val step = lesson.diagramSteps[currentStep]
+                    Text(step.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = trackColor)
+                    Spacer(Modifier.height(4.dp))
+                    Text(step.description, style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp)
+                    if (step.diagram.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFF1A1A2E)) {
+                            Text(step.diagram, modifier = Modifier.padding(8.dp),
+                                fontFamily = FontFamily.Monospace, fontSize = 11.sp,
+                                color = Color(0xFFE6EDF3))
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (currentStep > 0) {
@@ -810,24 +821,23 @@ private fun TradeoffsStage(lesson: DesignLesson, trackColor: Color, onNext: () -
                     Text("Trade-offs", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     lesson.tradeoffs.forEach { tradeoff ->
-                        Row(Modifier.padding(vertical = 4.dp)) {
-                            Column(Modifier.weight(1f)) {
-                                Row {
-                                    Text("✅ ", fontSize = 14.sp)
-                                    Text(tradeoff.pro, style = MaterialTheme.typography.bodyMedium,
-                                        color = AlgoGreen)
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            Text(tradeoff.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Row {
+                                Column(Modifier.weight(1f)) {
+                                    Text("✅ ${tradeoff.optionA}", fontSize = 12.sp, color = AlgoGreen)
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text("❌ ${tradeoff.optionB}", fontSize = 12.sp, color = AlgoRed)
                                 }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Column(Modifier.weight(1f)) {
-                                Row {
-                                    Text("❌ ", fontSize = 14.sp)
-                                    Text(tradeoff.con, style = MaterialTheme.typography.bodyMedium,
-                                        color = AlgoRed)
-                                }
-                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text("→ ${tradeoff.recommendation}", fontSize = 12.sp,
+                                color = AlgoBlue, fontWeight = FontWeight.Medium)
                         }
-                        HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        HorizontalDivider(Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }
@@ -841,7 +851,7 @@ private fun TradeoffsStage(lesson: DesignLesson, trackColor: Color, onNext: () -
                         Text("✅ Use When", fontWeight = FontWeight.Bold, color = AlgoGreen, fontSize = 13.sp)
                         Spacer(Modifier.height(6.dp))
                         lesson.whenToUse.forEach {
-                            Text("• $it", fontSize = 12.sp,
+                            Text("• ${it.scenario}", fontSize = 12.sp,
                                 modifier = Modifier.padding(vertical = 2.dp))
                         }
                     }
@@ -854,7 +864,7 @@ private fun TradeoffsStage(lesson: DesignLesson, trackColor: Color, onNext: () -
                         Text("❌ Avoid When", fontWeight = FontWeight.Bold, color = AlgoRed, fontSize = 13.sp)
                         Spacer(Modifier.height(6.dp))
                         lesson.whenNotToUse.forEach {
-                            Text("• $it", fontSize = 12.sp,
+                            Text("• ${it.scenario}", fontSize = 12.sp,
                                 modifier = Modifier.padding(vertical = 2.dp))
                         }
                     }
@@ -880,7 +890,21 @@ private fun QuizStage(
         }
         return
     }
-    val q = lesson.quiz.getOrNull(quizIndex) ?: return
+    // Skip fill_blank questions (no options to tap) — only show multiple_choice
+    val mcQuestions = lesson.quiz.filter { it.type == "multiple_choice" && !it.options.isNullOrEmpty() }
+    if (mcQuestions.isEmpty()) {
+        // No MC questions — just show completion button
+        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Button(onClick = onNext, modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AlgoGreen)) {
+                Text("FINISH LESSON 🎉", fontWeight = FontWeight.Bold)
+            }
+        }
+        return
+    }
+    val effectiveIndex = quizIndex.coerceAtMost(mcQuestions.size - 1)
+    val q = mcQuestions.getOrNull(effectiveIndex) ?: return
     val isCorrect = selectedAnswer == q.correct
 
     Column(Modifier.fillMaxSize()) {
@@ -895,7 +919,7 @@ private fun QuizStage(
                     Spacer(Modifier.width(8.dp))
                     Text("Quiz", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                     Spacer(Modifier.weight(1f))
-                    Text("${quizIndex + 1}/${lesson.quiz.size}",
+                    Text("${effectiveIndex + 1}/${mcQuestions.size}",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             }
@@ -907,7 +931,7 @@ private fun QuizStage(
                         lineHeight = 24.sp)
                 }
             }
-            itemsIndexed(q.options) { i, option ->
+            itemsIndexed(q.options!!) { i, option ->
                 val bgColor = when {
                     !showExplanation && selectedAnswer == i -> AlgoBlue.copy(alpha = 0.15f)
                     showExplanation && i == q.correct -> AlgoGreen.copy(alpha = 0.15f)
@@ -976,7 +1000,7 @@ private fun QuizStage(
                     ) { Text("CHECK ANSWER", fontWeight = FontWeight.Bold) }
                 }
                 else -> {
-                    val isLast = quizIndex >= lesson.quiz.size - 1
+                    val isLast = effectiveIndex >= mcQuestions.size - 1
                     Button(
                         onClick = onNext,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
