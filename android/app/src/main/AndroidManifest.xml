@@ -14,6 +14,10 @@
         android:theme="@style/Theme.AlgoQuest"
         android:usesCleartextTraffic="true">
 
+        <meta-data
+            android:name="android.telephony.PROPERTY_SATELLITE_DATA_OPTIMIZED"
+            android:value="com.algoquest.rimola" />
+
         <activity
             android:name="com.algoquest.MainActivity"
             android:exported="true"

@@ -58,9 +58,11 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  progress       UserProgress[]
-  achievements   UserAchievement[]
-  reviews        SpacedReview[]
+  progress               UserProgress[]
+  achievements           UserAchievement[]
+  reviews                SpacedReview[]
+  designLessonProgress   UserDesignLessonProgress[]
+  designQuestionProgress UserDesignQuestionProgress[]
 }
 
 model Topic {
@@ -161,4 +163,117 @@ model SpacedReview {
   problem      Problem @relation(fields: [problemId], references: [id])
 
   @@unique([userId, problemId])
+}
+
+// ─────────────────────────────────────────────
+// SYSTEM DESIGN
+// ─────────────────────────────────────────────
+
+model DesignTrack {
+  id          String         @id @default(uuid())
+  name        String
+  slug        String         @unique
+  description String
+  icon        String         // emoji
+  color       String         // hex color
+  order       Int            @unique
+  level       String         // "beginner" | "intermediate" | "advanced"
+  lessons     DesignLesson[]
+}
+
+model DesignLesson {
+  id           String      @id @default(uuid())
+  title        String
+  slug         String      @unique
+  trackId      String
+  track        DesignTrack @relation(fields: [trackId], references: [id])
+  order        Int
+
+  // Stage 1 — Understand
+  summary      String      // plain-English explanation
+  analogy      String      // real-world analogy
+
+  // Stage 2 — Visualize
+  diagram      String      // ASCII diagram (full picture)
+  diagramSteps Json        // [{ step, title, description, diagram }]
+
+  // Stage 3 — Compare
+  tradeoffs    Json        // [{ title, optionA, optionB, recommendation, reasoning }]
+  whenToUse    Json        // [{ scenario, reason }]
+  whenNotToUse Json        // [{ scenario, reason }]
+  keyPoints    Json        // string[] — bullet takeaways
+
+  // Stage 4 — Quiz (same format as Problem.quiz)
+  quiz         Json
+
+  createdAt    DateTime    @default(now())
+
+  progress     UserDesignLessonProgress[]
+
+  @@unique([trackId, order])
+}
+
+model DesignQuestion {
+  id        String     @id @default(uuid())
+  title     String
+  slug      String     @unique
+  category  String     // "storage"|"social"|"messaging"|"media"|"search"|"infrastructure"|"commerce"
+  difficulty Difficulty
+  order     Int
+
+  // Stage 1 — Requirements
+  overview            String  // what we're designing + why interviewers ask it
+  functionalReqs      Json    // string[]
+  nonFunctionalReqs   Json    // string[]
+  clarifyingQuestions Json    // string[] — questions to ask the interviewer
+
+  // Stage 2 — Estimation
+  estimations         Json    // { qps, storage, bandwidth, memory, calculations: string[] }
+
+  // Stage 3 — Architecture
+  diagram             String  // ASCII high-level architecture diagram
+  components          Json    // [{ name, type, description, whyChosen, alternatives[] }]
+
+  // Stage 4 — Deep Dive
+  bottlenecks         Json    // [{ problem, solution }]
+  tradeoffs           Json    // [{ decision, chosen, alternative, reasoning }]
+  realWorldExamples   Json    // string[]
+  tips                Json    // string[] — what interviewers look for
+
+  // Stage 5 — Quiz
+  quiz                Json
+
+  createdAt           DateTime @default(now())
+
+  progress            UserDesignQuestionProgress[]
+}
+
+model UserDesignLessonProgress {
+  id          String       @id @default(uuid())
+  userId      String
+  lessonId    String
+  status      String       @default("AVAILABLE") // AVAILABLE | IN_PROGRESS | COMPLETED
+  stage       Int          @default(0)
+  score       Int          @default(0)
+  completedAt DateTime?
+
+  user        User         @relation(fields: [userId], references: [id])
+  lesson      DesignLesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId])
+}
+
+model UserDesignQuestionProgress {
+  id          String         @id @default(uuid())
+  userId      String
+  questionId  String
+  status      String         @default("AVAILABLE")
+  stage       Int            @default(0)
+  score       Int            @default(0)
+  completedAt DateTime?
+
+  user        User           @relation(fields: [userId], references: [id])
+  question    DesignQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
 }
