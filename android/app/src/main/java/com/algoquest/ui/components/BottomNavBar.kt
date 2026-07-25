@@ -16,6 +16,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Home", Icons.Filled.Home, "home"),
     BottomNavItem("Learn", Icons.Filled.School, "topic_map"),
+    BottomNavItem("Design", Icons.Filled.Hub, "design"),
     BottomNavItem("Rank", Icons.Filled.EmojiEvents, "leaderboard"),
     BottomNavItem("Profile", Icons.Filled.Person, "profile")
 )

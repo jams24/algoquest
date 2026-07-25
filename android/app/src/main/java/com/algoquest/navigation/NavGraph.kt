@@ -32,6 +32,13 @@ sealed class Screen(val route: String) {
     data object Onboarding : Screen("onboarding")
     data object Review : Screen("review")
     data object Search : Screen("search")
+    data object Design : Screen("design")
+    data object DesignTrack : Screen("design/track/{slug}") {
+        fun createRoute(slug: String) = "design/track/$slug"
+    }
+    data object DesignLesson : Screen("design/lesson/{slug}") {
+        fun createRoute(slug: String) = "design/lesson/$slug"
+    }
 }
 
 // Smooth slide transitions
@@ -220,6 +227,36 @@ fun AlgoNavGraph(navController: NavHostController, isLoggedIn: Boolean, startDes
         composable(Screen.Search.route) {
             SearchScreen(
                 onNavigateToLesson = { slug -> navController.navigate(Screen.Lesson.createRoute(slug)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // System Design
+        composable(
+            Screen.Design.route,
+            enterTransition = { enterFade },
+            exitTransition = { exitFade }
+        ) {
+            DesignTracksScreen(
+                onNavigateToTrack = { slug -> navController.navigate(Screen.DesignTrack.createRoute(slug)) }
+            )
+        }
+
+        composable(
+            Screen.DesignTrack.route,
+            arguments = listOf(navArgument("slug") { type = NavType.StringType })
+        ) {
+            DesignTrackScreen(
+                onNavigateToLesson = { slug -> navController.navigate(Screen.DesignLesson.createRoute(slug)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            Screen.DesignLesson.route,
+            arguments = listOf(navArgument("slug") { type = NavType.StringType })
+        ) {
+            DesignLessonScreen(
                 onBack = { navController.popBackStack() }
             )
         }

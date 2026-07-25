@@ -68,4 +68,20 @@ interface ApiService {
 
     @PATCH("gamification/settings")
     suspend fun updateSettings(@Body settings: Map<String, Any>): Response<Map<String, Any>>
+
+    // ==================== System Design ====================
+    @GET("design/tracks")
+    suspend fun getDesignTracks(): Response<List<DesignTrackSummary>>
+
+    @GET("design/tracks/{slug}")
+    suspend fun getDesignTrack(@Path("slug") slug: String): Response<DesignTrackDetail>
+
+    @GET("design/lessons/{slug}")
+    suspend fun getDesignLesson(@Path("slug") slug: String): Response<DesignLesson>
+
+    @POST("design/lessons/{slug}/progress")
+    suspend fun submitDesignLessonProgress(
+        @Path("slug") slug: String,
+        @Body request: DesignProgressRequest
+    ): Response<DesignProgressResponse>
 }

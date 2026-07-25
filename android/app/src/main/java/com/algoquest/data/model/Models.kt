@@ -223,3 +223,90 @@ data class ProblemBrief(
     val story: String,
     val topic: TopicBrief
 )
+
+// ==================== System Design ====================
+data class DesignTrackSummary(
+    val id: String,
+    val name: String,
+    val slug: String,
+    val description: String,
+    val icon: String,
+    val color: String,
+    val order: Int,
+    val level: String,
+    val totalLessons: Int,
+    val completedLessons: Int,
+    val isUnlocked: Boolean
+)
+
+data class DesignLessonSummary(
+    val id: String,
+    val title: String,
+    val slug: String,
+    val order: Int,
+    val status: String,
+    val stage: Int
+)
+
+data class DesignTrackDetail(
+    val id: String,
+    val name: String,
+    val slug: String,
+    val description: String,
+    val icon: String,
+    val color: String,
+    val order: Int,
+    val level: String,
+    val lessons: List<DesignLessonSummary>
+)
+
+data class DesignTradeoff(val pro: String, val con: String)
+
+data class DesignQuizQuestion(
+    val question: String,
+    val options: List<String>,
+    val correct: Int,
+    val explanation: String
+)
+
+data class DesignLesson(
+    val id: String,
+    val title: String,
+    val slug: String,
+    val order: Int,
+    val summary: String,
+    val analogy: String,
+    val diagram: String,
+    val diagramSteps: List<String>,
+    val tradeoffs: List<DesignTradeoff>,
+    val whenToUse: List<String>,
+    val whenNotToUse: List<String>,
+    val keyPoints: List<String>,
+    val quiz: List<DesignQuizQuestion>,
+    val track: DesignTrackBrief,
+    val userProgress: DesignProgressBrief?
+)
+
+data class DesignTrackBrief(
+    val name: String,
+    val slug: String,
+    val color: String,
+    val icon: String
+)
+
+data class DesignProgressBrief(
+    val status: String,
+    val stage: Int,
+    val score: Int
+)
+
+data class DesignProgressRequest(
+    val stage: Int,
+    val score: Int,
+    val completed: Boolean
+)
+
+data class DesignProgressResponse(
+    val success: Boolean,
+    val xpEarned: Int
+)

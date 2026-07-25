@@ -166,6 +166,16 @@ class AlgoRepository @Inject constructor(
     // ==================== Gamification ====================
     suspend fun getAchievements(): Result<List<AchievementFull>> = apiCall { api.getAchievements() }
 
+    // ==================== System Design ====================
+    suspend fun getDesignTracks(): Result<List<DesignTrackSummary>> = apiCall { api.getDesignTracks() }
+
+    suspend fun getDesignTrack(slug: String): Result<DesignTrackDetail> = apiCall { api.getDesignTrack(slug) }
+
+    suspend fun getDesignLesson(slug: String): Result<DesignLesson> = apiCall { api.getDesignLesson(slug) }
+
+    suspend fun submitDesignLessonProgress(slug: String, stage: Int, score: Int, completed: Boolean): Result<DesignProgressResponse> =
+        apiCall { api.submitDesignLessonProgress(slug, DesignProgressRequest(stage, score, completed)) }
+
     // ==================== Helpers ====================
     private suspend fun <T> apiCall(call: suspend () -> retrofit2.Response<T>): Result<T> {
         return try {
