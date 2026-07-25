@@ -13,9 +13,6 @@
     "prisma:seed-design": "ts-node src/prisma/seed-design-all.ts",
     "prisma:studio": "prisma studio --schema=src/prisma/schema.prisma"
   },
-  "prisma": {
-    "seed": "ts-node src/prisma/seed.ts"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
