@@ -231,6 +231,22 @@ router.post('/sync-subscription', authenticate, async (req: AuthRequest, res: Re
   try {
     const { isPro, expirationDate, productId } = req.body;
 
+    // Don't downgrade a manually-granted active subscription (e.g. test/admin accounts).
+    // If RevenueCat says not pro but our DB has an active subscription with a future expiry,
+    // keep it — the manual grant takes precedence.
+    if (!isPro) {
+      const existing = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { subscriptionStatus: true, subscriptionExpiresAt: true }
+      });
+      if (existing?.subscriptionStatus === 'active' &&
+          existing?.subscriptionExpiresAt &&
+          existing.subscriptionExpiresAt > new Date()) {
+        res.json({ success: true, subscriptionStatus: 'active', subscriptionExpiresAt: existing.subscriptionExpiresAt });
+        return;
+      }
+    }
+
     const status = isPro ? 'active' : 'expired';
     const expiresAt = expirationDate ? new Date(expirationDate) : null;
 
